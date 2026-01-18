@@ -147,11 +147,11 @@ void NetworkSimulator::runSimulation() {
             // 应用事件参数
             // TODO(bannos)：这里考虑是否只设置tap0的参数，还是两个都设置
             tap0->set_bw(current_event->bandwidth);
-            tap0->set_delay_ms(current_event->delay_ms);
+            tap0->set_delay_ms(current_event->delay_ms * 1000 / 2);
             tap0->set_loss(current_event->loss);
             
             tap1->set_bw(current_event->bandwidth);
-            tap1->set_delay_ms(current_event->delay_ms);
+            tap1->set_delay_ms(current_event->delay_ms * 1000 / 2);
             tap1->set_loss(current_event->loss);
         }
         
@@ -173,11 +173,11 @@ void NetworkSimulator::runSimulation() {
     
     // 设置链路断开（将带宽设为极低，延迟设为极大，丢包设为100%）
     tap0->set_bw(0.01);  // 1 bps，几乎无法通信
-    tap0->set_delay_ms(10000);  // 10秒延迟
+    tap0->set_delay_ms(10000 * 1000);  // 10秒延迟
     tap0->set_loss(1000);  // 100%丢包
     
     tap1->set_bw(0.01);
-    tap1->set_delay_ms(10000);
+    tap1->set_delay_ms(10000 * 1000);
     tap1->set_loss(1000);
     
     cout << "\n========== 网络仿真结束 ==========" << endl;
@@ -216,8 +216,15 @@ bool loadScriptFromFile(const std::string& filename, NetworkSimulator& simulator
     while (std::getline(file, line)) {
         line_num++;
         
-        // 跳过空行和注释
-        if (line.empty() || line[0] == '#') {
+        // 去除行首尾的空格
+        size_t start = line.find_first_not_of(" \t");
+        if (start == std::string::npos) {
+            // 空行，跳过
+            continue;
+        }
+        
+        // 跳过注释行
+        if (line[start] == '#') {
             continue;
         }
         
@@ -232,8 +239,8 @@ bool loadScriptFromFile(const std::string& filename, NetworkSimulator& simulator
             
             simulator.addEvent(start_time, duration, bandwidth, delay, loss, description);
             event_count++;
-            std::cout << "  事件" << event_count << ": " << start_time << "ms开始, " 
-                      << duration << "ms, " << bandwidth << "bps, " 
+            std::cout << "  事件" << event_count << ": " << start_time / 1000 << "s开始, " 
+                      << duration / 1000 << "s, " << bandwidth << "Mbps, " 
                       << delay << "ms延迟, " << loss << "‰丢包" << std::endl;
         } else {
             std::cerr << "脚本文件第 " << line_num << " 行格式错误: " << line << std::endl;
@@ -764,8 +771,8 @@ int main(int argc, char **argv)
 {
     int opt; // 命令行参数解析临时变量
     // 默认参数：源/目标TAP/网卡/桥接接口
-    string srctap="tap0", srceth="eth1_h", srcbr="aif", 
-           dsttap="tap1", dsteth="eth2_h", dstbr="bif";
+    string srctap="tap0", srceth="eth2_h", srcbr="aif", 
+           dsttap="tap1", dsteth="eth1_h", dstbr="bif";
     int delay_ms = 0;
     int64_t total_time_ms = 0;
     string script_file;
@@ -880,7 +887,7 @@ int main(int argc, char **argv)
         }
         
         if (total_time_ms > 0) {
-            cout << "\n开始网络仿真，总时长: " << total_time_ms << " ms" << endl;
+            cout << "\n开始网络仿真，总时长: " << total_time_ms / 1000 << " s" << endl;
             simulator.start();
             
             // 等待仿真结束
